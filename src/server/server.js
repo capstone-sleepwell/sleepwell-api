@@ -38,8 +38,8 @@ const init = async () => {
     password: "cookie_encryption_password_secure",
     clientId: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    isSecure: process.env.NODE_ENV === "production",
-    location: process.env.BASE_URL,
+    isSecure: false,
+    location: server.info.uri,
   });
   // rute
   server.route(routes);

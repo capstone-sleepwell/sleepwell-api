@@ -16,7 +16,10 @@ const {
 } = require("../dbconfig/db.js");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+
 const { OAuth2Client } = require("google-auth-library");
+const oauth2Client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 require("dotenv").config();
 
 const allowedDomains = ["gmail.com"];
@@ -258,7 +261,7 @@ const loginUserHandler = async (request, h) => {
 };
 
 const verifyIdToken = async (idToken) => {
-  const ticket = await client.verifyIdToken({
+  const ticket = await oauth2Client.verifyIdToken({
     idToken,
     audience: process.env.GOOGLE_CLIENT_ID,
   });
@@ -267,47 +270,32 @@ const verifyIdToken = async (idToken) => {
 
 const loginGoogleHandler = async (request, h) => {
   try {
-    const { id_token } = request.payload; // Ambil id_token dari Android
-
-    // Verifikasi id_token dengan Google
-    const googleProfile = await verifyIdToken(id_token);
-
-    if (!googleProfile) {
-      return h.response({
-        status: "fail",
-        message: "Invalid Google ID token",
-      }).code(401);
-    }
-
-    const profile = {
-      id: googleProfile.sub,
-      email: googleProfile.email,
-      displayName: googleProfile.name,
-      gender: googleProfile.gender || null,
-    };
-
-    // Proses login atau register seperti handler sebelumnya
-    const existingUser = await getUserByEmail(profile.email);
-
-    if (existingUser) {
+    const currentDate = new Date().toISOString().slice(0, 19).replace("T", " "); // Format 'YYYY-MM-DD HH:MM:SS'
+    // ambil informasi profile dari google
+    const profile = request.auth.credentials.profile;
+    // cek user apakah sudah ada di database berdasarkan email
+    const exsistingUser = await getUserByEmail(profile.email);
+    // jika user ada maka
+    if (exsistingUser) {
+      // jika user sudah ada, buat token jwt
       const token = jwt.sign(
         {
-          userId: existingUser.id,
-          email: existingUser.email,
-          name: existingUser.name,
+          userId: exsistingUser.id,
+          email: exsistingUser.email,
+          name: exsistingUser.name,
         },
         process.env.JWT_SECRET,
         { expiresIn: "30d" }
       );
+      // response
       return h.response({
         status: "success",
         token,
-        message: `Selamat Datang kembali ${existingUser.name}!`,
-        id: existingUser.id,
-      }).code(200);
+        message: `Selamat Datang kembali ${exsistingUser.name}!`,
+        id: exsistingUser.id,
+      });
     }
-
-    const currentDate = new Date().toISOString().slice(0, 19).replace("T", " ");
+    // jika user belum terdaftar, simpan data ke dalam database
     const newUser = await createUser({
       username: profile.displayName,
       name: profile.displayName,
@@ -319,29 +307,30 @@ const loginGoogleHandler = async (request, h) => {
       createdAt: currentDate,
       updatedAt: currentDate,
     });
-
+    // buat token
     const token = jwt.sign(
       {
         userId: newUser.id,
         email: newUser.email,
-        name: newUser.name,
+        name: newUser.email,
       },
       process.env.JWT_SECRET,
       { expiresIn: "30d" }
     );
-
+    // response
     return h.response({
       status: "success",
       token,
       message: `Login Berhasil! Halo ${newUser.name}!`,
       id: newUser.id,
-    }).code(201);
+    });
   } catch (error) {
-    console.error("Error during Google login:", error);
-    return h.response({
-      status: "fail",
-      message: "An error occurred during login. Please try again later.",
-    }).code(500);
+    return h
+      .response({
+        status: "fail",
+        message: error.message,
+      })
+      .code(500);
   }
 };
 

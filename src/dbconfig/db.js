@@ -1,5 +1,5 @@
 const mysql = require("mysql2/promise");
-const nanoid = require("nanoid"); 
+const nanoid = require("nanoid");
 require("dotenv").config();
 let db;
 // koneksi
@@ -7,7 +7,7 @@ async function initializeDB() {
   try {
     console.log("Initializing database connection...");
     db = await mysql.createPool({
-      //socketPath: `/cloudsql/${process.env.DB_CONNECTION_NAME}`,
+      //host: `/cloudsql/dhimas-main-project-441411:asia-southeast2:sleepwell-testing`,
       host: "34.50.86.58",
       port: 3306,
       user: process.env.DB_USER,
@@ -29,27 +29,22 @@ initializeDB().catch((error) => {
 async function createUser(userData) {
   try {
     // ambil data dari userdata
-    const { username, name, email, password, birthdate, gender, google_id } =
-      userData;
+    const {
+      username,
+      name,
+      email,
+      password,
+      birthdate,
+      gender,
+      google_id,
+      createdAt,
+      updatedAt,
+    } = userData;
     const userId = nanoid(21);
-    const currentDate = new Date().toISOString().slice(0, 19).replace("T", " "); // Format 'YYYY-MM-DD HH:MM:SS'
-    // const birthdateValue = birthdate ? birthdate : null;
     // simpan user ke db
     await db.query(
       `INSERT INTO users (id, username, name, email, password, birthdate, gender, google_id, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        userId,
-        username,
-        name,
-        email,
-        password,
-        birthdate || null,
-        gender,
-        google_id,
-        currentDate,
-        currentDate
-      ]
+       VALUES ('${userId}', '${username}', '${name}', '${email}', '${password}', '${createdAt}', '${gender}', '${google_id}', '${createdAt}', '${updatedAt}')`
     );
 
     // ambil user yang baru dibuat
@@ -138,9 +133,7 @@ async function postArticle(userId, title, image, body) {
       `INSERT INTO articles (id, userId, title, image, body) VALUES ('${id}', '${userId}', '${title}', '${image}', '${body}')`
     );
     // Periksa apakah query berhasil memperbarui baris
-    const check = await db.query(
-      `SELECT * FROM articles WHERE id = '${id}'`
-    );
+    const check = await db.query(`SELECT * FROM articles WHERE id = '${id}'`);
 
     return check;
   } catch (error) {
@@ -150,9 +143,7 @@ async function postArticle(userId, title, image, body) {
 
 async function getArticleById(id) {
   try {
-    const result = await db.query(
-      `SELECT * FROM articles WHERE id = '${id}'`
-    );
+    const result = await db.query(`SELECT * FROM articles WHERE id = '${id}'`);
 
     return result;
   } catch (error) {
@@ -162,9 +153,7 @@ async function getArticleById(id) {
 
 async function getCommentById(id) {
   try {
-    const result = await db.query(
-      `SELECT * FROM comments WHERE id = '${id}'`
-    );
+    const result = await db.query(`SELECT * FROM comments WHERE id = '${id}'`);
 
     return result;
   } catch (error) {
@@ -200,9 +189,7 @@ async function deleteArticleById(id) {
   try {
     await db.query(`DELETE FROM comments WHERE articleId = '${id}'`);
 
-    const result = await db.query(
-      `DELETE FROM articles WHERE id = '${id}'`
-    );
+    const result = await db.query(`DELETE FROM articles WHERE id = '${id}'`);
 
     return result;
   } catch (error) {
@@ -231,9 +218,7 @@ async function postComment(userId, articleId, body) {
       `INSERT INTO comments (id, userId, articleId, body, createdAt, updatedAt) VALUES ('${id}', '${userId}', '${articleId}', '${body}', '${currentDate}', '${currentDate}')`
     );
 
-    const result = await db.query(
-      `SELECT * FROM comments WHERE id = '${id}'`
-    );
+    const result = await db.query(`SELECT * FROM comments WHERE id = '${id}'`);
 
     return result;
   } catch (error) {
