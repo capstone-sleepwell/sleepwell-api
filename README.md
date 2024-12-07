@@ -1,3 +1,2 @@
 # Backend API
-
-This branch for develop and test the Backend API
+This branch to develop and test the Backend API
